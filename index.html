@@ -9,8 +9,50 @@
 </head>
 <body>
 
-<div class="app">
-  <!-- Sidebar -->
+<!-- AUTH SCREEN -->
+<div id="auth-screen" class="auth-screen" style="display:none">
+  <div class="auth-card">
+    <div class="auth-logo">💰 Финансы</div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" data-tab="login">Войти</button>
+      <button class="auth-tab" data-tab="register">Регистрация</button>
+    </div>
+
+    <form id="login-form" class="auth-form">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="example@mail.com" required />
+      </div>
+      <div class="form-group">
+        <label>Пароль</label>
+        <input type="password" id="login-password" placeholder="••••••" required />
+      </div>
+      <div id="login-error" class="auth-error" style="display:none"></div>
+      <button type="submit" class="btn-primary btn-full">Войти</button>
+    </form>
+
+    <form id="register-form" class="auth-form" style="display:none">
+      <div class="form-group">
+        <label>Имя</label>
+        <input type="text" id="reg-name" placeholder="Как вас зовут?" required />
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="reg-email" placeholder="example@mail.com" required />
+      </div>
+      <div class="form-group">
+        <label>Пароль</label>
+        <input type="password" id="reg-password" placeholder="Минимум 6 символов" required />
+      </div>
+      <div id="reg-error" class="auth-error" style="display:none"></div>
+      <button type="submit" class="btn-primary btn-full">Создать аккаунт</button>
+    </form>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="main-app" class="app" style="display:none">
   <aside class="sidebar">
     <div class="logo">💰 Финансы</div>
     <nav>
@@ -18,12 +60,15 @@
       <button class="nav-btn" data-page="expenses">Расходы</button>
       <button class="nav-btn" data-page="categories">Категории</button>
     </nav>
+    <div class="sidebar-footer">
+      <div id="user-name" class="user-name"></div>
+      <button class="logout-btn" id="logout-btn">Выйти</button>
+    </div>
   </aside>
 
-  <!-- Main content -->
   <main class="content">
 
-    <!-- DASHBOARD PAGE -->
+    <!-- DASHBOARD -->
     <section id="page-dashboard" class="page active">
       <div class="page-header">
         <h1>Дашборд</h1>
@@ -52,15 +97,11 @@
       <div class="charts-row">
         <div class="chart-card">
           <h3>По категориям</h3>
-          <div class="chart-wrap">
-            <canvas id="chart-pie"></canvas>
-          </div>
+          <div class="chart-wrap"><canvas id="chart-pie"></canvas></div>
         </div>
         <div class="chart-card">
           <h3>По дням</h3>
-          <div class="chart-wrap">
-            <canvas id="chart-bar"></canvas>
-          </div>
+          <div class="chart-wrap"><canvas id="chart-bar"></canvas></div>
         </div>
       </div>
 
@@ -70,47 +111,32 @@
       </div>
     </section>
 
-    <!-- EXPENSES PAGE -->
+    <!-- EXPENSES -->
     <section id="page-expenses" class="page">
       <div class="page-header">
         <h1>Расходы</h1>
         <button class="btn-primary" id="open-add-modal">+ Добавить</button>
       </div>
-
       <div class="filters">
-        <select id="filter-month">
-          <option value="">Все месяцы</option>
-        </select>
-        <select id="filter-category">
-          <option value="">Все категории</option>
-        </select>
+        <select id="filter-month"><option value="">Все месяцы</option></select>
+        <select id="filter-category"><option value="">Все категории</option></select>
       </div>
-
       <div class="card">
         <table class="expenses-table">
           <thead>
             <tr>
-              <th>Дата</th>
-              <th>Категория</th>
-              <th>Описание</th>
-              <th>Сумма</th>
-              <th></th>
+              <th>Дата</th><th>Категория</th><th>Описание</th><th>Сумма</th><th></th>
             </tr>
           </thead>
           <tbody id="expenses-list"></tbody>
         </table>
-        <div id="expenses-empty" class="empty-state" style="display:none">
-          Нет расходов. Добавьте первый!
-        </div>
+        <div id="expenses-empty" class="empty-state" style="display:none">Нет расходов. Добавьте первый!</div>
       </div>
     </section>
 
-    <!-- CATEGORIES PAGE -->
+    <!-- CATEGORIES -->
     <section id="page-categories" class="page">
-      <div class="page-header">
-        <h1>Категории</h1>
-      </div>
-
+      <div class="page-header"><h1>Категории</h1></div>
       <div class="card">
         <div class="add-category-form">
           <input type="text" id="new-category-name" placeholder="Название категории" maxlength="30" />
@@ -118,12 +144,9 @@
           <button class="btn-primary" id="add-category-btn">Добавить</button>
         </div>
       </div>
-
       <div class="card">
         <div id="categories-list"></div>
-        <div id="categories-empty" class="empty-state" style="display:none">
-          Нет категорий. Добавьте первую!
-        </div>
+        <div id="categories-empty" class="empty-state" style="display:none">Нет категорий.</div>
       </div>
     </section>
 
