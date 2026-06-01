@@ -1,120 +1,26 @@
-// --- API ---
-const API = '';
+// --- STATE ---
+let expenses = JSON.parse(localStorage.getItem('expenses') || '[]');
+let categories = JSON.parse(localStorage.getItem('categories') || 'null');
 
-async function api(method, path, body) {
-  const token = localStorage.getItem('token');
-  const res = await fetch(API + path, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: 'Bearer ' + token } : {})
-    },
-    ...(body ? { body: JSON.stringify(body) } : {})
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Ошибка сервера');
-  return data;
+if (!categories) {
+  categories = [
+    { id: 'food', name: 'Еда', color: '#f59e0b' },
+    { id: 'transport', name: 'Транспорт', color: '#3b82f6' },
+    { id: 'entertainment', name: 'Развлечения', color: '#8b5cf6' },
+    { id: 'health', name: 'Здоровье', color: '#10b981' },
+    { id: 'shopping', name: 'Покупки', color: '#ef4444' },
+  ];
+  saveCategories();
 }
 
-// --- STATE ---
-let categories = [];
-let expenses = [];
 let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
 let pieChart = null;
 let barChart = null;
 
-// --- AUTH ---
-const authScreen = document.getElementById('auth-screen');
-const mainApp = document.getElementById('main-app');
+function saveExpenses() { localStorage.setItem('expenses', JSON.stringify(expenses)); }
+function saveCategories() { localStorage.setItem('categories', JSON.stringify(categories)); }
 
-function showAuth() {
-  authScreen.style.display = 'flex';
-  mainApp.style.display = 'none';
-}
-
-function showApp(user) {
-  authScreen.style.display = 'none';
-  mainApp.style.display = 'flex';
-  document.getElementById('user-name').textContent = user.name;
-}
-
-async function init() {
-  const token = localStorage.getItem('token');
-  if (!token) { showAuth(); return; }
-  try {
-    await loadCategories();
-    const stored = JSON.parse(localStorage.getItem('user') || 'null');
-    showApp(stored || { name: '' });
-    renderDashboard();
-  } catch {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    showAuth();
-  }
-}
-
-// AUTH TABS
-document.querySelectorAll('.auth-tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    document.getElementById('login-form').style.display = tab.dataset.tab === 'login' ? 'block' : 'none';
-    document.getElementById('register-form').style.display = tab.dataset.tab === 'register' ? 'block' : 'none';
-  });
-});
-
-// LOGIN
-document.getElementById('login-form').addEventListener('submit', async e => {
-  e.preventDefault();
-  const errEl = document.getElementById('login-error');
-  errEl.style.display = 'none';
-  try {
-    const data = await api('POST', '/api/auth/login', {
-      email: document.getElementById('login-email').value,
-      password: document.getElementById('login-password').value
-    });
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    await loadCategories();
-    showApp(data.user);
-    renderDashboard();
-  } catch (err) {
-    errEl.textContent = err.message;
-    errEl.style.display = 'block';
-  }
-});
-
-// REGISTER
-document.getElementById('register-form').addEventListener('submit', async e => {
-  e.preventDefault();
-  const errEl = document.getElementById('reg-error');
-  errEl.style.display = 'none';
-  try {
-    const data = await api('POST', '/api/auth/register', {
-      name: document.getElementById('reg-name').value,
-      email: document.getElementById('reg-email').value,
-      password: document.getElementById('reg-password').value
-    });
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    await loadCategories();
-    showApp(data.user);
-    renderDashboard();
-  } catch (err) {
-    errEl.textContent = err.message;
-    errEl.style.display = 'block';
-  }
-});
-
-// LOGOUT
-document.getElementById('logout-btn').addEventListener('click', () => {
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
-  showAuth();
-});
-
-// --- NAVIGATION ---
 document.querySelectorAll('.nav-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -123,11 +29,10 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     document.getElementById('page-' + btn.dataset.page).classList.add('active');
     if (btn.dataset.page === 'dashboard') renderDashboard();
     if (btn.dataset.page === 'expenses') renderExpenses();
-    if (btn.dataset.page === 'categories') renderCategoriesPage();
+    if (btn.dataset.page === 'categories') renderCategories();
   });
 });
 
-// --- MONTH NAVIGATION ---
 const MONTHS = ['Январь','Февраль','Март','Апрель','Май','Июнь',
                  'Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
 
@@ -138,62 +43,53 @@ function updateMonthLabel() {
 document.getElementById('prev-month').addEventListener('click', () => {
   currentMonth--;
   if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+  updateMonthLabel();
   renderDashboard();
 });
 
 document.getElementById('next-month').addEventListener('click', () => {
   currentMonth++;
   if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+  updateMonthLabel();
   renderDashboard();
 });
 
-// --- HELPERS ---
 function getCat(id) { return categories.find(c => c.id === id); }
 function formatAmount(n) { return Number(n).toLocaleString('ru-RU') + ' ₸'; }
 function formatDate(str) {
   const d = new Date(str + 'T00:00:00');
   return d.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' });
 }
-function monthKey(month, year) {
-  return `${year}-${String(month + 1).padStart(2, '0')}`;
+
+function getMonthExpenses(month, year) {
+  return expenses.filter(e => {
+    const d = new Date(e.date + 'T00:00:00');
+    return d.getMonth() === month && d.getFullYear() === year;
+  });
 }
 
-// --- DATA LOADING ---
-async function loadCategories() {
-  categories = await api('GET', '/api/categories');
-}
-
-async function loadExpenses(month) {
-  const query = month ? `?month=${month}` : '';
-  expenses = await api('GET', '/api/expenses' + query);
-}
-
-// --- DASHBOARD ---
-async function renderDashboard() {
+function renderDashboard() {
   updateMonthLabel();
-  const key = monthKey(currentMonth, currentYear);
-  await loadExpenses(key);
+  const list = getMonthExpenses(currentMonth, currentYear);
+  const total = list.reduce((s, e) => s + Number(e.amount), 0);
 
-  const total = expenses.reduce((s, e) => s + Number(e.amount), 0);
   document.getElementById('stat-total').textContent = formatAmount(total);
-  document.getElementById('stat-count').textContent = expenses.length;
-  const usedCats = new Set(expenses.map(e => e.category.id));
-  document.getElementById('stat-cats').textContent = usedCats.size;
+  document.getElementById('stat-count').textContent = list.length;
+  document.getElementById('stat-cats').textContent = new Set(list.map(e => e.category)).size;
 
-  renderPieChart();
-  renderBarChart();
-  renderBreakdown(total);
+  renderPieChart(list);
+  renderBarChart(list);
+  renderBreakdown(list, total);
 }
 
-function renderBreakdown(total) {
+function renderBreakdown(list, total) {
   const byCategory = {};
-  expenses.forEach(e => {
-    const id = e.category.id;
-    if (!byCategory[id]) byCategory[id] = { cat: e.category, amount: 0 };
-    byCategory[id].amount += Number(e.amount);
+  list.forEach(e => {
+    if (!byCategory[e.category]) byCategory[e.category] = 0;
+    byCategory[e.category] += Number(e.amount);
   });
 
-  const sorted = Object.values(byCategory).sort((a, b) => b.amount - a.amount);
+  const sorted = Object.entries(byCategory).sort((a, b) => b[1] - a[1]);
   const container = document.getElementById('category-breakdown');
 
   if (sorted.length === 0) {
@@ -201,7 +97,9 @@ function renderBreakdown(total) {
     return;
   }
 
-  container.innerHTML = sorted.map(({ cat, amount }) => {
+  container.innerHTML = sorted.map(([catId, amount]) => {
+    const cat = getCat(catId);
+    if (!cat) return '';
     const pct = total > 0 ? Math.round((amount / total) * 100) : 0;
     return `
       <div class="breakdown-item">
@@ -216,24 +114,23 @@ function renderBreakdown(total) {
   }).join('');
 }
 
-function renderPieChart() {
+function renderPieChart(list) {
   const byCategory = {};
-  expenses.forEach(e => {
-    const id = e.category.id;
-    if (!byCategory[id]) byCategory[id] = { cat: e.category, amount: 0 };
-    byCategory[id].amount += Number(e.amount);
+  list.forEach(e => {
+    if (!byCategory[e.category]) byCategory[e.category] = 0;
+    byCategory[e.category] += Number(e.amount);
   });
 
-  const items = Object.values(byCategory);
+  const cats = Object.keys(byCategory).map(id => getCat(id)).filter(Boolean);
   const ctx = document.getElementById('chart-pie').getContext('2d');
   if (pieChart) pieChart.destroy();
-  if (!items.length) { ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height); return; }
+  if (!cats.length) { ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height); pieChart = null; return; }
 
   pieChart = new Chart(ctx, {
     type: 'doughnut',
     data: {
-      labels: items.map(i => i.cat.name),
-      datasets: [{ data: items.map(i => i.amount), backgroundColor: items.map(i => i.cat.color), borderWidth: 2, borderColor: '#fff' }]
+      labels: cats.map(c => c.name),
+      datasets: [{ data: cats.map(c => byCategory[c.id]), backgroundColor: cats.map(c => c.color), borderWidth: 2, borderColor: '#fff' }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
@@ -245,13 +142,10 @@ function renderPieChart() {
   });
 }
 
-function renderBarChart() {
+function renderBarChart(list) {
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   const byDay = Array(daysInMonth).fill(0);
-  expenses.forEach(e => {
-    const day = new Date(e.date + 'T00:00:00').getDate();
-    byDay[day - 1] += Number(e.amount);
-  });
+  list.forEach(e => { byDay[new Date(e.date + 'T00:00:00').getDate() - 1] += Number(e.amount); });
 
   const ctx = document.getElementById('chart-bar').getContext('2d');
   if (barChart) barChart.destroy();
@@ -273,9 +167,7 @@ function renderBarChart() {
   });
 }
 
-// --- EXPENSES PAGE ---
-async function renderExpenses() {
-  await loadExpenses();
+function renderExpenses() {
   populateFilterMonths();
   populateFilterCategories();
   applyExpenseFilters();
@@ -297,7 +189,7 @@ function populateFilterCategories() {
   const current = sel.value;
   sel.innerHTML = '<option value="">Все категории</option>';
   categories.forEach(c => {
-    sel.innerHTML += `<option value="${c.id}" ${c.id == current ? 'selected' : ''}>${c.name}</option>`;
+    sel.innerHTML += `<option value="${c.id}" ${c.id === current ? 'selected' : ''}>${c.name}</option>`;
   });
 }
 
@@ -307,7 +199,7 @@ function applyExpenseFilters() {
 
   let filtered = expenses.filter(e => {
     if (monthFilter && !e.date.startsWith(monthFilter)) return false;
-    if (catFilter && e.category.id != catFilter) return false;
+    if (catFilter && e.category !== catFilter) return false;
     return true;
   }).slice().sort((a, b) => b.date.localeCompare(a.date));
 
@@ -322,16 +214,19 @@ function applyExpenseFilters() {
 
   empty.style.display = 'none';
   tbody.innerHTML = filtered.map(e => {
-    const cat = e.category;
+    const cat = getCat(e.category);
+    const catHtml = cat
+      ? `<span class="cat-badge" style="background:${cat.color}22;color:${cat.color}">
+           <span class="cat-dot" style="background:${cat.color}"></span>${cat.name}
+         </span>`
+      : '—';
     return `
       <tr>
         <td>${formatDate(e.date)}</td>
-        <td><span class="cat-badge" style="background:${cat.color}22;color:${cat.color}">
-          <span class="cat-dot" style="background:${cat.color}"></span>${cat.name}
-        </span></td>
-        <td style="color:#6b7280">${e.description || '—'}</td>
+        <td>${catHtml}</td>
+        <td style="color:#6b7280">${e.desc || '—'}</td>
         <td class="amount-cell">−${formatAmount(e.amount)}</td>
-        <td><button class="btn-danger" onclick="deleteExpense(${e.id})" title="Удалить">×</button></td>
+        <td><button class="btn-danger" onclick="deleteExpense('${e.id}')" title="Удалить">×</button></td>
       </tr>`;
   }).join('');
 }
@@ -339,14 +234,14 @@ function applyExpenseFilters() {
 document.getElementById('filter-month').addEventListener('change', applyExpenseFilters);
 document.getElementById('filter-category').addEventListener('change', applyExpenseFilters);
 
-async function deleteExpense(id) {
+function deleteExpense(id) {
   if (!confirm('Удалить этот расход?')) return;
-  await api('DELETE', `/api/expenses/${id}`);
-  await renderExpenses();
-  await renderDashboard();
+  expenses = expenses.filter(e => e.id !== id);
+  saveExpenses();
+  renderExpenses();
+  renderDashboard();
 }
 
-// --- ADD EXPENSE MODAL ---
 document.getElementById('open-add-modal').addEventListener('click', openModal);
 document.getElementById('close-modal').addEventListener('click', closeModal);
 document.getElementById('cancel-modal').addEventListener('click', closeModal);
@@ -375,23 +270,22 @@ function populateCategorySelect() {
   });
 }
 
-document.getElementById('expense-form').addEventListener('submit', async e => {
+document.getElementById('expense-form').addEventListener('submit', e => {
   e.preventDefault();
   const amount = document.getElementById('exp-amount').value;
-  const category_id = document.getElementById('exp-category').value;
+  const category = document.getElementById('exp-category').value;
   const date = document.getElementById('exp-date').value;
-  const description = document.getElementById('exp-desc').value.trim();
-  if (!amount || !category_id || !date) return;
+  const desc = document.getElementById('exp-desc').value.trim();
+  if (!amount || !category || !date) return;
 
-  await api('POST', '/api/expenses', { amount: Number(amount), category_id: Number(category_id), date, description });
+  expenses.push({ id: Date.now().toString(), amount: Number(amount), category, date, desc });
+  saveExpenses();
   closeModal();
-  await renderDashboard();
-  await renderExpenses();
+  renderDashboard();
+  renderExpenses();
 });
 
-// --- CATEGORIES PAGE ---
-async function renderCategoriesPage() {
-  await loadCategories();
+function renderCategories() {
   const list = document.getElementById('categories-list');
   const empty = document.getElementById('categories-empty');
 
@@ -402,15 +296,14 @@ async function renderCategoriesPage() {
   }
 
   empty.style.display = 'none';
-  await loadExpenses();
   list.innerHTML = categories.map(c => {
-    const count = expenses.filter(e => e.category.id === c.id).length;
+    const count = expenses.filter(e => e.category === c.id).length;
     return `
       <div class="category-item">
         <div class="category-color" style="background:${c.color}"></div>
         <div class="category-name">${c.name}</div>
         <div class="category-count">${count} расход${plural(count)}</div>
-        <button class="btn-danger" onclick="deleteCategory(${c.id})" title="Удалить">×</button>
+        <button class="btn-danger" onclick="deleteCategory('${c.id}')" title="Удалить">×</button>
       </div>`;
   }).join('');
 }
@@ -421,14 +314,14 @@ function plural(n) {
   return 'ов';
 }
 
-document.getElementById('add-category-btn').addEventListener('click', async () => {
+document.getElementById('add-category-btn').addEventListener('click', () => {
   const name = document.getElementById('new-category-name').value.trim();
   const color = document.getElementById('new-category-color').value;
   if (!name) { document.getElementById('new-category-name').focus(); return; }
-
-  await api('POST', '/api/categories', { name, color });
+  categories.push({ id: Date.now().toString(), name, color });
+  saveCategories();
   document.getElementById('new-category-name').value = '';
-  await renderCategoriesPage();
+  renderCategories();
   populateFilterCategories();
 });
 
@@ -436,12 +329,14 @@ document.getElementById('new-category-name').addEventListener('keydown', e => {
   if (e.key === 'Enter') document.getElementById('add-category-btn').click();
 });
 
-async function deleteCategory(id) {
-  if (!confirm('Удалить категорию? Все расходы этой категории тоже удалятся.')) return;
-  await api('DELETE', `/api/categories/${id}`);
-  await renderCategoriesPage();
-  await renderDashboard();
+function deleteCategory(id) {
+  const count = expenses.filter(e => e.category === id).length;
+  const msg = count > 0 ? `В этой категории ${count} расход${plural(count)}. Всё равно удалить?` : 'Удалить категорию?';
+  if (!confirm(msg)) return;
+  categories = categories.filter(c => c.id !== id);
+  saveCategories();
+  renderCategories();
+  renderDashboard();
 }
 
-// --- INIT ---
-init();
+renderDashboard();
