@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Колл-центр — Админка</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f0f2f5;
+      --card: #fff;
+      --accent: #6c63ff;
+      --accent-light: #ede9fe;
+      --text: #1a1d2e;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --danger: #ef4444;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --radius: 12px;
+      --shadow: 0 2px 12px rgba(0,0,0,0.07);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 32px;
+    }
+
+    .header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; }
+    .header h1 { font-size: 24px; font-weight: 700; }
+    .header span { font-size: 13px; color: var(--muted); background: var(--card); padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); }
+
+    /* SEARCH */
+    .search-box {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+    }
+    .search-box label { font-size: 13px; font-weight: 600; color: var(--muted); display: block; margin-bottom: 6px; }
+    .search-box input {
+      flex: 1; padding: 12px 16px;
+      border: 2px solid var(--border); border-radius: 8px;
+      font-size: 16px; outline: none; transition: border-color 0.15s;
+    }
+    .search-box input:focus { border-color: var(--accent); }
+
+    .btn {
+      padding: 12px 28px; background: var(--accent); color: #fff;
+      border: none; border-radius: 8px; font-size: 15px; font-weight: 600;
+      cursor: pointer; transition: background 0.15s; white-space: nowrap; display: flex; align-items: center; gap: 8px;
+    }
+    .btn:hover { background: #5a52e0; }
+    .btn:disabled { background: #a5b4fc; cursor: not-allowed; }
+    .btn-back {
+      background: none; border: none; color: var(--accent); font-size: 14px;
+      font-weight: 600; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 6px;
+    }
+    .btn-back:hover { color: #5a52e0; }
+
+    .error-msg {
+      background: #fef2f2; color: var(--danger);
+      border: 1px solid #fecaca; border-radius: 8px;
+      padding: 14px 18px; font-size: 14px; margin-bottom: 24px;
+    }
+
+    /* VIEWS */
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* CLIENT CARD */
+    .client-card {
+      background: var(--card); border-radius: var(--radius);
+      padding: 28px; box-shadow: var(--shadow); margin-bottom: 20px;
+      display: grid; grid-template-columns: auto 1fr; gap: 24px; align-items: start;
+    }
+    .client-avatar {
+      width: 64px; height: 64px; border-radius: 50%;
+      background: var(--accent); color: #fff; font-size: 24px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .client-info h2 { font-size: 22px; font-weight: 700; margin-bottom: 12px; }
+    .client-fields { display: flex; flex-wrap: wrap; gap: 20px; }
+    .client-field .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); margin-bottom: 2px; }
+    .client-field .value { font-size: 15px; font-weight: 500; }
+
+    /* MULTIPLE CLIENTS */
+    .clients-list { background: var(--card); border-radius: var(--radius); padding: 8px; box-shadow: var(--shadow); margin-bottom: 24px; }
+    .client-row {
+      display: flex; align-items: center; gap: 16px;
+      padding: 14px 16px; border-radius: 8px; cursor: pointer; transition: background 0.15s;
+    }
+    .client-row:hover { background: var(--bg); }
+    .client-row-avatar {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: var(--accent-light); color: var(--accent); font-size: 16px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .client-row-name { font-weight: 600; font-size: 15px; }
+    .client-row-phone { font-size: 13px; color: var(--muted); }
+
+    /* SECTION */
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
+    }
+    .section-title { font-size: 15px; font-weight: 600; color: var(--muted); }
+    .section-count { font-size: 12px; color: var(--muted); background: var(--bg); padding: 2px 8px; border-radius: 20px; }
+
+    /* ORDERS LIST */
+    .orders-card { background: var(--card); border-radius: var(--radius); padding: 20px 24px; box-shadow: var(--shadow); margin-bottom: 20px; }
+    .order-item {
+      display: flex; align-items: center; gap: 16px;
+      padding: 14px 0; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s;
+      border-radius: 8px; margin: 0 -8px; padding-left: 8px; padding-right: 8px;
+    }
+    .order-item:last-child { border-bottom: none; }
+    .order-item:hover { background: var(--bg); }
+    .order-num { font-weight: 700; font-size: 15px; min-width: 100px; }
+    .order-date { font-size: 13px; color: var(--muted); flex: 1; }
+    .order-status-badge {
+      font-size: 12px; font-weight: 500; padding: 4px 12px; border-radius: 20px;
+    }
+    .order-arrow { color: var(--muted); font-size: 18px; }
+    .empty-state { text-align: center; padding: 32px; color: var(--muted); font-size: 14px; }
+
+    /* ORDER DETAIL */
+    .order-detail-header {
+      background: var(--card); border-radius: var(--radius);
+      padding: 24px 28px; box-shadow: var(--shadow); margin-bottom: 20px;
+      display: flex; align-items: center; gap: 20px;
+    }
+    .order-detail-num { font-size: 22px; font-weight: 700; }
+    .order-detail-meta { font-size: 13px; color: var(--muted); }
+
+    /* STATUS TIMELINE */
+    .timeline-card { background: var(--card); border-radius: var(--radius); padding: 28px; box-shadow: var(--shadow); }
+    .timeline { position: relative; padding-left: 32px; }
+
+    .timeline-step { position: relative; padding-bottom: 28px; }
+    .timeline-step:last-child { padding-bottom: 0; }
+
+    .timeline-step::before {
+      content: '';
+      position: absolute;
+      left: -24px;
+      top: 20px;
+      bottom: -4px;
+      width: 2px;
+      background: var(--border);
+    }
+    .timeline-step:last-child::before { display: none; }
+
+    .timeline-dot {
+      position: absolute;
+      left: -32px;
+      top: 4px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: var(--card);
+      z-index: 1;
+    }
+
+    .timeline-step.done .timeline-dot {
+      background: var(--success);
+      border-color: var(--success);
+    }
+    .timeline-step.current .timeline-dot {
+      background: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px rgba(108,99,255,0.15);
+    }
+    .timeline-step.done .timeline-step-line { background: var(--success); }
+    .timeline-step.current .timeline-step-line { background: var(--accent); }
+
+    .timeline-step::before {
+      background: var(--border);
+    }
+    .timeline-step.done::before { background: var(--success); }
+
+    .timeline-status { font-size: 15px; font-weight: 600; text-transform: capitalize; }
+    .timeline-step.current .timeline-status { color: var(--accent); }
+    .timeline-step.pending .timeline-status { color: var(--muted); }
+
+    .timeline-time { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .timeline-note {
+      font-size: 13px; color: var(--text-muted);
+      background: var(--bg); border-radius: 6px;
+      padding: 6px 10px; margin-top: 6px; display: inline-block;
+    }
+
+    /* PENDING STEPS */
+    .timeline-step.pending .timeline-dot {
+      background: var(--bg);
+      border-color: var(--border);
+    }
+    .timeline-step.pending .timeline-status { color: #c0c5d0; }
+    .timeline-step.pending .timeline-time { display: none; }
+
+    /* STATUS COLORS */
+    .status-создан       { background: #e0f2fe; color: #0369a1; }
+    .status-собирается   { background: #fef3c7; color: #92400e; }
+    .status-собрано      { background: #d1fae5; color: #065f46; }
+    .status-упаковано    { background: #d1fae5; color: #065f46; }
+    .status-отгружено    { background: #ede9fe; color: #5b21b6; }
+    .status-в-пути       { background: #ede9fe; color: #5b21b6; }
+    .status-доставлен-в-пвз { background: #d1fae5; color: #065f46; }
+    .status-у-курьера    { background: #fef3c7; color: #92400e; }
+    .status-доставлен    { background: #d1fae5; color: #065f46; }
+    .status-возврат      { background: #fee2e2; color: #991b1b; }
+
+    /* CALLS */
+    .calls-card { background: var(--card); border-radius: var(--radius); padding: 20px 24px; box-shadow: var(--shadow); }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; padding: 8px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); border-bottom: 1px solid var(--border); }
+    td { padding: 12px; font-size: 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #fafafa; }
+
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      display: none;
+    }
+    .spinner.visible { display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 600px) {
+      body { padding: 16px; }
+      .client-card { grid-template-columns: 1fr; }
+      .order-date { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📞 Колл-центр</h1>
+  <span>Поиск клиентов</span>
+</div>
+
+<!-- SEARCH -->
+<div class="search-box">
+  <div style="flex:1">
+    <label for="search-input">Номер телефона или ФИО клиента</label>
+    <input type="text" id="search-input" placeholder="+7 701 123 45 67 или Иванов Иван" />
+  </div>
+  <button class="btn" id="search-btn" onclick="searchClient()">
+    <span class="spinner" id="spinner"></span>
+    Найти
+  </button>
+</div>
+
+<div id="error-msg" class="error-msg" style="display:none"></div>
+
+<!-- VIEW: MULTIPLE CLIENTS -->
+<div id="view-multiple" class="view">
+  <div class="section-header">
+    <span class="section-title">Найдено несколько клиентов — выберите нужного</span>
+  </div>
+  <div class="clients-list" id="clients-list"></div>
+</div>
+
+<!-- VIEW: CLIENT PROFILE -->
+<div id="view-client" class="view">
+  <div class="client-card">
+    <div class="client-avatar" id="client-avatar"></div>
+    <div class="client-info">
+      <h2 id="client-name"></h2>
+      <div class="client-fields">
+        <div class="client-field">
+          <div class="label">Телефон</div>
+          <div class="value" id="client-phone"></div>
+        </div>
+        <div class="client-field" id="field-email" style="display:none">
+          <div class="label">Email</div>
+          <div class="value" id="client-email"></div>
+        </div>
+        <div class="client-field" id="field-city" style="display:none">
+          <div class="label">Город</div>
+          <div class="value" id="client-city"></div>
+        </div>
+        <div class="client-field">
+          <div class="label">Клиент с</div>
+          <div class="value" id="client-since"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="orders-card">
+    <div class="section-header">
+      <span class="section-title">Заказы</span>
+      <span class="section-count" id="orders-count"></span>
+    </div>
+    <div id="orders-list"></div>
+  </div>
+
+  <div class="calls-card">
+    <div class="section-header">
+      <span class="section-title">История звонков</span>
+      <span class="section-count" id="calls-count"></span>
+    </div>
+    <div id="calls-content"></div>
+  </div>
+</div>
+
+<!-- VIEW: ORDER DETAIL -->
+<div id="view-order" class="view">
+  <div style="margin-bottom: 20px">
+    <button class="btn-back" onclick="showClientView()">← Назад к клиенту</button>
+  </div>
+
+  <div class="order-detail-header">
+    <div>
+      <div class="order-detail-num" id="order-detail-num"></div>
+      <div class="order-detail-meta" id="order-detail-meta"></div>
+    </div>
+    <div style="margin-left:auto" id="order-detail-badge"></div>
+  </div>
+
+  <div class="timeline-card">
+    <div class="section-header" style="margin-bottom:24px">
+      <span class="section-title">Цепочка статусов</span>
+    </div>
+    <div class="timeline" id="order-timeline"></div>
+  </div>
+</div>
+
+<script>
+  const ALL_STATUSES = [
+    'создан', 'собирается', 'собрано', 'упаковано',
+    'отгружено', 'в пути', 'доставлен в ПВЗ', 'у курьера', 'доставлен', 'возврат'
+  ];
+
+  let currentClient = null;
+  let currentOrders = [];
+  let currentCalls = [];
+
+  document.getElementById('search-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') searchClient();
+  });
+
+  function showView(name) {
+    ['view-multiple', 'view-client', 'view-order'].forEach(id => {
+      document.getElementById(id).classList.remove('active');
+    });
+    document.getElementById('view-' + name).classList.add('active');
+  }
+
+  function showClientView() { showView('client'); }
+
+  async function searchClient() {
+    const q = document.getElementById('search-input').value.trim();
+    if (!q) { document.getElementById('search-input').focus(); return; }
+
+    const btn = document.getElementById('search-btn');
+    const spinner = document.getElementById('spinner');
+    const errorMsg = document.getElementById('error-msg');
+
+    btn.disabled = true;
+    spinner.classList.add('visible');
+    errorMsg.style.display = 'none';
+    ['view-multiple', 'view-client', 'view-order'].forEach(id => {
+      document.getElementById(id).classList.remove('active');
+    });
+
+    try {
+      const res = await fetch(`/api/client?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        errorMsg.textContent = data.error || 'Ошибка поиска';
+        errorMsg.style.display = 'block';
+        return;
+      }
+
+      if (data.multiple) {
+        renderMultiple(data.clients);
+        showView('multiple');
+      } else {
+        renderClient(data.client, data.orders, data.calls);
+        showView('client');
+      }
+
+    } catch {
+      errorMsg.textContent = 'Не удалось подключиться к серверу';
+      errorMsg.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      spinner.classList.remove('visible');
+    }
+  }
+
+  function renderMultiple(clients) {
+    const list = document.getElementById('clients-list');
+    list.innerHTML = clients.map(c => `
+      <div class="client-row" onclick="loadClient(${c.id})">
+        <div class="client-row-avatar">${c.full_name[0]}</div>
+        <div>
+          <div class="client-row-name">${c.full_name}</div>
+          <div class="client-row-phone">${c.phone}${c.city ? ' · ' + c.city : ''}</div>
+        </div>
+      </div>`).join('');
+  }
+
+  async function loadClient(id) {
+    try {
+      const res = await fetch(`/api/client?q=${encodeURIComponent(id)}&by_id=1`);
+      const data = await res.json();
+      if (data.client) {
+        renderClient(data.client, data.orders, data.calls);
+        showView('client');
+      }
+    } catch {}
+  }
+
+  function renderClient(client, orders, calls) {
+    currentClient = client;
+    currentOrders = orders;
+    currentCalls = calls;
+
+    document.getElementById('client-avatar').textContent = client.full_name[0];
+    document.getElementById('client-name').textContent = client.full_name;
+    document.getElementById('client-phone').textContent = client.phone;
+
+    setField('field-email', 'client-email', client.email);
+    setField('field-city', 'client-city', client.city);
+
+    document.getElementById('client-since').textContent = fmtDate(client.created_at);
+    document.getElementById('orders-count').textContent = orders.length + ' заказ(ов)';
+    document.getElementById('calls-count').textContent = calls.length + ' звонков';
+
+    renderOrders(orders);
+    renderCalls(calls);
+  }
+
+  function setField(fieldId, valueId, val) {
+    const field = document.getElementById(fieldId);
+    if (val) { document.getElementById(valueId).textContent = val; field.style.display = ''; }
+    else { field.style.display = 'none'; }
+  }
+
+  function renderOrders(orders) {
+    const container = document.getElementById('orders-list');
+    if (!orders.length) {
+      container.innerHTML = '<div class="empty-state">Заказов не найдено</div>';
+      return;
+    }
+    container.innerHTML = orders.map(o => {
+      const slug = statusSlug(o.current_status);
+      return `
+        <div class="order-item" onclick="openOrder(${o.id})">
+          <div class="order-num">${o.order_number}</div>
+          <div class="order-date">Создан ${fmtDate(o.created_at)}</div>
+          <span class="order-status-badge status-${slug}">${o.current_status || '—'}</span>
+          <span class="order-arrow">›</span>
+        </div>`;
+    }).join('');
+  }
+
+  async function openOrder(orderId) {
+    try {
+      const res = await fetch(`/api/order/${orderId}`);
+      const data = await res.json();
+      if (!res.ok) return;
+
+      const { order, statuses } = data;
+
+      document.getElementById('order-detail-num').textContent = order.order_number;
+      document.getElementById('order-detail-meta').textContent =
+        `Клиент: ${order.full_name} · ${order.phone} · Создан ${fmtDate(order.created_at)}`;
+
+      const lastStatus = statuses[statuses.length - 1]?.status || '';
+      const slug = statusSlug(lastStatus);
+      document.getElementById('order-detail-badge').innerHTML =
+        `<span class="order-status-badge status-${slug}" style="font-size:14px;padding:6px 16px">${lastStatus}</span>`;
+
+      renderTimeline(statuses, lastStatus);
+      showView('order');
+    } catch {}
+  }
+
+  function renderTimeline(statuses, currentStatus) {
+    const doneSet = new Set(statuses.map(s => s.status));
+    const statusMap = {};
+    statuses.forEach(s => { statusMap[s.status] = s; });
+
+    const isReturn = currentStatus === 'возврат';
+
+    let steps = isReturn
+      ? [...ALL_STATUSES.slice(0, ALL_STATUSES.indexOf('возврат')), 'возврат']
+      : ALL_STATUSES.filter(s => s !== 'возврат');
+
+    const currentIdx = steps.indexOf(currentStatus);
+
+    const html = steps.map((s, i) => {
+      const isDone = doneSet.has(s) && i < currentIdx;
+      const isCurrent = s === currentStatus;
+      const isPending = !isDone && !isCurrent;
+
+      let cls = isPending ? 'pending' : isCurrent ? 'current' : 'done';
+      const entry = statusMap[s];
+
+      return `
+        <div class="timeline-step ${cls}">
+          <div class="timeline-dot"></div>
+          <div class="timeline-status">${s}</div>
+          ${entry ? `<div class="timeline-time">${fmtDateTime(entry.created_at)}</div>` : ''}
+          ${entry?.note ? `<div class="timeline-note">💬 ${entry.note}</div>` : ''}
+        </div>`;
+    }).join('');
+
+    document.getElementById('order-timeline').innerHTML = html;
+  }
+
+  function renderCalls(calls) {
+    const container = document.getElementById('calls-content');
+    if (!calls.length) {
+      container.innerHTML = '<div class="empty-state">Звонков не найдено</div>';
+      return;
+    }
+    const rows = calls.map(c => {
+      const dur = c.duration_sec
+        ? `${Math.floor(c.duration_sec / 60)}:${String(c.duration_sec % 60).padStart(2, '0')}`
+        : '—';
+      return `<tr>
+        <td>${fmtDateTime(c.date)}</td>
+        <td>${c.operator || '—'}</td>
+        <td>${dur}</td>
+        <td><span class="order-status-badge status-собрано">${c.status || '—'}</span></td>
+        <td style="color:#6b7280">${c.notes || '—'}</td>
+      </tr>`;
+    }).join('');
+
+    container.innerHTML = `<table>
+      <thead><tr><th>Дата</th><th>Оператор</th><th>Длительность</th><th>Статус</th><th>Заметки</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  }
+
+  function statusSlug(s) {
+    return (s || '').toLowerCase().replace(/\s+/g, '-').replace(/\//g, '-');
+  }
+
+  function fmtDate(str) {
+    return new Date(str).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  function fmtDateTime(str) {
+    return new Date(str).toLocaleString('ru-RU', {
+      day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+  }
+</script>
+
+</body>
+</html>
